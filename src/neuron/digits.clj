@@ -2,7 +2,11 @@
 (require '[clojure.java.io :as io])
 
 
-(defmacro dbg[x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
+;(defmacro dbg[x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
+(defmacro dbg [x] x)
+
+;;(defn decimal-binary [n]
+;;(assoc (vec (take 10 (repeat 0))) n 1)
 
 (def decimal->binary {0 [1 0 0 0 0 0 0 0 0 0 ]
                       1 [0 1 0 0 0 0 0 0 0 0 ]
@@ -25,12 +29,14 @@
   [input output])
  )
 
-;(def sample-data (map get-inputs (.listFiles (io/file "trainingDigits"))))
+;(def digit-data (map get-inputs (.listFiles (io/file "trariningDigits"))))
 
 
 
 
 
+
+;;this creates a map of vectors for each digit, not the best structure for training, prefer get-inputs.
 
 (defn get-inputs2 [directory]
 (reduce (fn [data inputFile]
@@ -41,7 +47,7 @@
         {} (.listFiles (io/file directory))))
 
 
-(def data (get-inputs2 "trainingDigits"))
+;(def data (get-inputs2 "trainingDigits"))
 
 
 
