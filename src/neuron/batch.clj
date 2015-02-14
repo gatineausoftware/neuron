@@ -14,7 +14,7 @@
 ;activation functions sigma(z)
 
 (defn sigmoid [z]
-(div 1 (plus 1 (exp (minus z)))))
+(div 1 (plus 1 (exp (minus 0 z)))))
 
 
 (defn tanh [z] (Math/tanh z))
@@ -92,8 +92,9 @@
 
 
 ; cross entropy cost function...assumes using sigmoid activation
+; fix hack...don't need the afn'..bad clojure
 (defn cross-entropy-output-deltas 
-	[output-layer-activations expected-output]
+	[output-layer-activations expected-output afn']
         (minus output-layer-activations expected-output))
 
 
