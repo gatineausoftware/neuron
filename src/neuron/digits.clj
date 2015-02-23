@@ -29,6 +29,11 @@
   [input output])
  )
 
+(defn load-directory [directory]
+  (map get-inputs (.listFiles (io/file directory)))
+)
+
+
 ;(def digit-data (map get-inputs (.listFiles (io/file "trariningDigits"))))
 
 
