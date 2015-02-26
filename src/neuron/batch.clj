@@ -1,7 +1,8 @@
 (ns neuron.batch
   (:use incanter.core)
   (:use incanter.stats)
-  (:use neuron.digits)
+ 
+  
 )
 
 
@@ -92,7 +93,8 @@
 
 
 ; cross entropy cost function...assumes using sigmoid activation
-; fix hack...don't need the afn'..bad clojure
+; fix hack...don't need the afn'..bad clojure...I should get rid of afn' here and in quadratic and call train network with a partial when using quadratic
+; or hardcode....
 (defn cross-entropy-output-deltas 
 	[output-layer-activations expected-output afn']
         (minus output-layer-activations expected-output))
@@ -130,6 +132,12 @@
        (recur b (rest weights') (conj activations b))))))
  
  
+(defn fp
+    [weights input afn]
+    (last (propagate-activations (matrix input) weights afn)))
+
+
+
  
  
 ;;weights-n-to-n+1 column 1 is weights from neuron 1 to next layer neurons
@@ -137,11 +145,11 @@
 ;;layer-n-activations a column matrix with activations for each layer n neuron
 ;;output is column matrix of activations.
 
-
-
 (defn compute-layer-n-delta [weights-n-to-n+1 layer-n+1-delta layer-n-activation afn']
   (mult (mmult (trans weights-n-to-n+1) layer-n+1-delta) (matrix (afn' layer-n-activation))))
              
+
+
  
  ; output-delta column matrix
  ; weights, vector of matrices
@@ -166,60 +174,89 @@
 	
 
 
-(defn calc-gradients
- [deltas activations] 
- (map #( mmult %1 (trans %2)) deltas activations))
-	
+
+(defn check-prediction [output expected-output]
+(if (= (first (apply max-key second (map-indexed vector output))) (.indexOf expected-output 1)) 1 0))
+
+
+; is there a way to do this as a single ->> ?
+(defn check-progress 
+[weights test-data afn sample-size]
+(let [batch (get-batch test-data sample-size)
+      activations (map #(fp weights (first %) afn) batch)
+      expected-output (map second batch)
+      ]
+      (->> (map check-prediction activations expected-output)
+           (reduce + 0)
+            ((partial #(div %2 %1) sample-size))
+            )))
+
+
+(defn spot-check [weights test-data afn size]
+(let [batch (get-batch test-data size)
+      activations (map #(fp weights (first %) afn) batch)
+      expected-output (map second batch)
+      accurate (map check-prediction activations expected-output)]
+      (map vector activations expected-output accurate))) 
+
+
+
+
 
 
 ; afn: activation function
 ; afn': derivative of activatino functin
 ; odf: output delta function (based on cross-entropy + sigmoid, or quadritic)
 
-(defn train-network
+(defn compute-gradient
 [weights input target afn afn' odf]
-(let [
-	 activations (propagate-activations input weights afn)
-	 deltas (compute-hidden-layer-deltas (odf (last activations) target afn') weights activations afn')
-	 gradients (calc-gradients deltas activations)]
-	 gradients))
+(let   [ activations (propagate-activations input weights afn)
+	 deltas (compute-hidden-layer-deltas (odf (last activations) target afn') weights activations afn')]
+       (map #(mmult %1 (trans %2)) deltas activations)))
 
 
 
-(defn train-data
+(defn train-network
 [weights sample-data learning-rate afn afn' odf]
-(loop [
+    (loop [
 	    s sample-data
 	    g (new-gradient-matrix weights)
 	    ]
 	    (if (empty? s)
 	    (map minus weights (map #(mult %1 learning-rate) g))
-	    (recur (rest s) (map plus g (train-network weights (matrix (first (first s))) (matrix (second (first s))) afn afn' odf))))))
+	    (recur (rest s) (map plus g (compute-gradient weights (matrix (first (first s))) (matrix (second (first s))) afn afn' odf))))))
 	    
 	    
 
 
 ;;learning rate is _not_ divided by batch size and passed to train-data
+;;also I appear not to be using the batch, but using the whole sample data
 (defn train-epochs-batch 
 [weights sample-data cycles batch-size learning-rate afn afn' odf]
 (if (zero? cycles) weights
     (let [batch (get-batch sample-data batch-size)]
-      (recur (train-data weights sample-data learning-rate afn afn' odf) sample-data (dec cycles) batch-size learning-rate afn afn' odf))))
+      (recur (train-network weights batch learning-rate afn afn' odf) sample-data (dec cycles) batch-size learning-rate afn afn' odf))))
 
 
 
 (defn train-epochs
   [weights sample-data cycles learning-rate afn afn' odf]
   (if (zero? cycles) weights
-      (recur (train-data weights sample-data learning-rate afn afn' odf) sample-data (dec cycles) learning-rate afn afn' odf)))
+      (recur (train-network weights sample-data learning-rate afn afn' odf) sample-data (dec cycles) learning-rate afn afn' odf)))
 
 
 
-
- (defn fp
-    [weights input afn]
-    (last (propagate-activations (matrix input) weights afn)))
-
+(defn train-with-progress
+  [weights training-data test-data cycles batch-size sample-size learning-rate afn afn' odf]
+  (loop [w weights
+         c cycles]
+  (if (zero? c) w
+      (do
+        (let [batch (get-batch training-data batch-size)
+              new-weights (train-network w batch learning-rate afn afn' odf)]
+          (println (- cycles c)  ": " (format "%.2f" (double (check-progress new-weights test-data afn sample-size)))) 
+        (recur new-weights (dec c))
+      )))))
 
 
 
@@ -230,19 +267,11 @@
 (defn build-network [size learning-rate cycles afn afn' odf data]
 (train-epochs (initialize-weights size 1) data cycles learning-rate afn afn' odf))
 
+(defn train-mf [learning-rate cycles batch-size sample-size digits-train digits-test]
+(train-with-progress (initialize-weights [1024 30 10] 2) digits-train digits-test cycles batch-size sample-size learning-rate sigmoid sigmoid' cross-entropy-output-deltas)
+)
 
 
 
-;;example usage:
-;;(def nn (build-network [2 3 1] 0.1 200 tanh tanh' quadratic-output-deltas sample-data))
-;;(fp nn [1 1])
 
-
-;;todo
-
-;add MSE to jump out of loop.
-
-
-;;(def nn (build-network [1024 30 10] 2 100 200 digit-data)
- 
 
