@@ -178,6 +178,8 @@
 (defn check-prediction [output expected-output]
 (if (= (first (apply max-key second (map-indexed vector output))) (.indexOf expected-output 1)) 1 0))
 
+;(defn check-precition' [v]
+;(check-prediction (first v) (second v))
 
 ; is there a way to do this as a single ->> ?
 (defn check-progress 
@@ -190,6 +192,9 @@
            (reduce + 0)
             ((partial #(div %2 %1) sample-size))
             )))
+
+
+
 
 
 (defn spot-check [weights test-data afn size]
@@ -254,7 +259,8 @@
       (do
         (let [batch (get-batch training-data batch-size)
               new-weights (train-network w batch learning-rate afn afn' odf)]
-          (println (- cycles c)  ": " (format "%.2f" (double (check-progress new-weights test-data afn sample-size)))) 
+          (when (= 0 (mod c 10)) 
+            (println (- cycles c)  ": " (format "%.2f" (double (check-progress new-weights test-data afn sample-size))))) 
         (recur new-weights (dec c))
       )))))
 
