@@ -178,20 +178,20 @@
 (defn check-prediction [output expected-output]
 (if (= (first (apply max-key second (map-indexed vector output))) (.indexOf expected-output 1)) 1 0))
 
-;(defn check-precition' [v]
-;(check-prediction (first v) (second v))
 
-; is there a way to do this as a single ->> ?
-(defn check-progress 
+
+(defn check-progress
 [weights test-data afn sample-size]
-(let [batch (get-batch test-data sample-size)
-      activations (map #(fp weights (first %) afn) batch)
-      expected-output (map second batch)
-      ]
-      (->> (map check-prediction activations expected-output)
-           (reduce + 0)
-            ((partial #(div %2 %1) sample-size))
-            )))
+(->> (get-batch test-data sample-size)
+     (map (fn [x] [(fp weights (first x) afn) (second x)]))
+     (map #(check-prediction (first %) (second %)))
+     (reduce + 0)
+     ((partial #(div %2 %1) sample-size))
+)
+)
+
+
+
 
 
 
