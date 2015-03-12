@@ -11,6 +11,9 @@
 ;  mmult does matrix multiplication
 
 
+;store the net here so that the progress thread can see it.
+(def neural-net (atom nil))
+
 
 ;activation functions sigma(z)
 
@@ -196,7 +199,6 @@
 
 
 
-
 (defn spot-check [weights test-data afn size]
 (let [batch (get-batch test-data size)
       activations (map #(fp weights (first %) afn) batch)
@@ -259,10 +261,8 @@
       (do
         (let [batch (get-batch training-data batch-size)
               new-weights (train-network w batch learning-rate afn afn' odf)]
-          (when (= 0 (mod c 10)) 
-            (println (- cycles c)  ": " (format "%.2f" (double (check-progress new-weights test-data afn sample-size))))) 
-        (recur new-weights (dec c))
-      )))))
+          (reset! neural-net new-weights)
+          (recur new-weights (dec c)))))))
 
 
 
@@ -274,7 +274,7 @@
 (train-epochs (initialize-weights size 1) data cycles learning-rate afn afn' odf))
 
 (defn train-mf [learning-rate cycles batch-size sample-size digits-train digits-test]
-(train-with-progress (initialize-weights [1024 30 10] 2) digits-train digits-test cycles batch-size sample-size learning-rate sigmoid sigmoid' cross-entropy-output-deltas)
+(train-with-progress (initialize-weights [1024 60 10] 2) digits-train digits-test cycles batch-size sample-size learning-rate sigmoid sigmoid' cross-entropy-output-deltas)
 )
 
 
