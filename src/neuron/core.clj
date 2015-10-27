@@ -19,4 +19,4 @@
 
 ;(def m (future (monitor neural-net digits-test sigmoid 40)))
 
-
+;feature A
